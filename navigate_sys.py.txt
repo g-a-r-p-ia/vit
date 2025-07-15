@@ -1,0 +1,36 @@
+from transformers import ViTModel, ViTFeatureExtractor
+from PIL import Image
+import torch
+import numpy as np
+import pickle
+
+with open("reference_db.pkl", "rb") as f:
+    reference_db = pickle.load(f)
+
+# Завантаження ViT
+feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224')
+model = ViTModel.from_pretrained('google/vit-base-patch16-224')
+model.eval()
+
+def extract_vit_descriptor(image_path):
+    image = Image.open(image_path)
+    inputs = feature_extractor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+    # Використовуємо CLS token як дескриптор
+    return outputs.last_hidden_state[0, 0, :].cpu().numpy()
+
+# Витяг дескрипторів для еталонних зображень
+reference_descriptors = []
+reference_coords = []
+for img_path, coords in reference_db:  # reference_db = [(path, (lat, lon)), ...]
+    desc = extract_vit_descriptor(img_path)
+    reference_descriptors.append(desc)
+    reference_coords.append(coords)
+
+# Визначення позиції для нового кадру
+query_desc = extract_vit_descriptor("query22.jpg")
+similarities = [np.dot(query_desc, ref) / (np.linalg.norm(query_desc) * np.linalg.norm(ref)) for ref in reference_descriptors]
+best_idx = np.argmax(similarities)
+estimated_coords = reference_coords[best_idx]
+print("Estimated position:", estimated_coords)

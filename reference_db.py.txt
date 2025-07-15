@@ -1,0 +1,23 @@
+import os
+import re
+
+PHOTOS_DIR = r"D://Course 3//photosfornavigatesystem//photos"
+
+pattern = re.compile(r"_(?P<lat>-?\d+\.\d+?)_(?P<lon>-?\d+\.\d+?)\.jpg$")
+
+reference_db = []
+
+for filename in os.listdir(PHOTOS_DIR):
+    match = pattern.search(filename)
+    if match:
+        lat = float(match.group("lat"))
+        lon = float(match.group("lon")) 
+        full_path = os.path.join(PHOTOS_DIR, filename)
+        reference_db.append((full_path, (lat, lon)))
+
+# Збереження reference_db у файл 
+import pickle
+with open("reference_db.pkl", "wb") as f:
+    pickle.dump(reference_db, f)
+
+print(f"Знайдено {len(reference_db)} зображень і збережено в reference_db.pkl")

@@ -1,0 +1,58 @@
+import requests
+import os
+from tqdm import tqdm
+
+#Access Token
+MAPILLARY_TOKEN = "MLY|30012975678316418|2dd5032cce65cdf9b72d1424eb26d2c7"
+
+center_lat = 52.36983875085728
+center_lon =  4.849164678280206
+delta = 0.0025  
+
+# bounding box: [min_lon, min_lat, max_lon, max_lat]
+bbox = [
+    center_lon - delta,
+    center_lat - delta,
+    center_lon + delta,
+    center_lat + delta,
+]
+
+SAVE_DIR = "D://Course 3//photosfornavigatesystem//photos"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+# Запит до API
+def get_images_bbox(bbox, limit=300):
+    url = "https://graph.mapillary.com/images"
+    params = {
+        "access_token": MAPILLARY_TOKEN,
+        "fields": "id,thumb_1024_url,computed_geometry",
+        "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
+        "limit": limit
+    }
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    return response.json().get("data", [])
+
+# Завантаження зображень
+def download_images(image_data_list):
+    for data in tqdm(image_data_list):
+        image_id = data["id"]
+
+        # Перевірка наявності координат
+        geometry = data.get("computed_geometry")
+        if not geometry or "coordinates" not in geometry:
+            continue
+
+        coords = geometry["coordinates"]
+        url = data.get("thumb_1024_url")
+        if not url:
+            continue
+
+        filename = f"{SAVE_DIR}/{image_id}_{coords[1]:.6f}_{coords[0]:.6f}.jpg"
+        with open(filename, "wb") as f:
+            f.write(requests.get(url).content)
+
+
+images = get_images_bbox(bbox)
+print(f"Знайдено зображень: {len(images)}")
+download_images(images)
